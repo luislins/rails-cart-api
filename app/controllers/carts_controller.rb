@@ -1,5 +1,8 @@
 class CartsController < ApplicationController
+  include CurrentCart
+
   before_action :set_cart, only: [:show, :add_item, :remove_item]
+  before_action :require_cart, only: [:add_item, :remove_item]
   rescue_from ActiveRecord::RecordNotFound, with: :product_not_found
 
   # GET /cart
@@ -13,68 +16,52 @@ class CartsController < ApplicationController
 
   # POST /cart
   def create
-    @cart = Cart.create(total_price: 0)
-    session[:cart_id] = @cart.id
+    create_cart
+    product = Product.find(params[:product_id])
 
-    add_product_to_cart
+    return invalid_quantity unless valid_quantity?
+
+    @cart.add_product(product, params[:quantity].to_i)
 
     render json: cart_response(@cart), status: :created
   end
 
   # POST /cart/add_item
   def add_item
-    unless @cart
-      return render json: { error: "Nenhum carrinho encontrado para esta sessão" }, status: :not_found
-    end
+    product = Product.find(params[:product_id])
 
-    add_product_to_cart
+    return invalid_quantity unless valid_quantity?
+
+    @cart.add_product(product, params[:quantity].to_i)
 
     render json: cart_response(@cart)
   end
 
   # DELETE /cart/:product_id
   def remove_item
-    unless @cart
-      return render json: { error: "Nenhum carrinho encontrado para esta sessão" }, status: :not_found
-    end
+    removed = @cart.remove_product(params[:product_id])
 
-    cart_item = @cart.cart_items.find_by(product_id: params[:product_id])
-
-    unless cart_item
+    unless removed
       return render json: { error: "Produto não encontrado no carrinho" }, status: :not_found
     end
-
-    cart_item.destroy
-    @cart.update_total_price
-    @cart.touch_interaction
 
     render json: cart_response(@cart)
   end
 
   private
 
-  def set_cart
-    @cart = Cart.find_by(id: session[:cart_id])
+  def require_cart
+    unless @cart
+      render json: { error: "Nenhum carrinho encontrado para esta sessão" }, status: :not_found
+    end
   end
 
-  def add_product_to_cart
-    product = Product.find(params[:product_id])
-    quantity = params[:quantity].to_i
+  def valid_quantity?
+    params[:quantity].to_i > 0
+  end
 
-    if quantity <= 0
-      return render json: { error: "Quantidade deve ser maior que zero" }, status: :unprocessable_entity
-    end
-
-    cart_item = @cart.cart_items.find_by(product_id: product.id)
-
-    if cart_item
-      cart_item.update(quantity: cart_item.quantity + quantity)
-    else
-      @cart.cart_items.create(product: product, quantity: quantity)
-    end
-
-    @cart.update_total_price
-    @cart.touch_interaction
+  def invalid_quantity
+    render json: { error: "Quantidade deve ser maior que zero" }, status: :unprocessable_entity
   end
 
   def product_not_found
