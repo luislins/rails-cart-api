@@ -181,6 +181,49 @@ A aplicação já possui um Dockerfile, que define como a aplicação deve ser c
 
 - Se desejar você pode adicionar a configuração faltante no arquivo `docker-compose.yml` e garantir que a aplicação rode de forma correta utilizando Docker. 
 
+## Considerações sobre a implementação
+
+### Padrões REST e rotas
+
+A API foi implementada seguindo os contratos definidos no enunciado. No entanto, gostaria de pontuar algumas decisões de design que, em um projeto real, eu faria de forma diferente:
+
+- **`POST /cart/add_item`** - No padrão REST, ações customizadas como `add_item` quebram a convenção CRUD. O ideal seria ter um recurso separado para os itens (`POST /cart/items`), onde cada item do carrinho é tratado como um recurso independente com seu próprio controller.
+
+- **`DELETE /cart/:product_id`** - Esta rota usa o `product_id` como parâmetro, o que pode gerar ambiguidade (parece que estamos deletando o carrinho com aquele ID). No padrão REST, seria mais claro algo como `DELETE /cart/items/:product_id` ou `DELETE /cart/items/:id` usando o ID do cart_item.
+
+- **Ausência de `PATCH` para alterar quantidade** - Não existe endpoint para diminuir a quantidade de um produto, apenas incrementar (`add_item`) ou remover completamente (`DELETE`). Em um e-commerce real, `PATCH /cart/items/:id` com a nova quantidade daria mais controle ao usuário.
+
+Em um cenário ideal, a API de carrinho seguiria algo como:
+
+```
+POST   /cart            -> cria o carrinho
+GET    /cart            -> mostra o carrinho
+POST   /cart/items      -> adiciona produto ao carrinho
+PATCH  /cart/items/:id  -> altera quantidade do item
+DELETE /cart/items/:id  -> remove item do carrinho
+```
+
+Mantive a implementação conforme o contrato solicitado, mas deixo registrado que conheço as convenções RESTful e optaria por essa abordagem em produção.
+
+### Arquitetura
+
+- **Concern `CurrentCart`** - Extraído do controller para encapsular a lógica de sessão do carrinho, seguindo o padrão utilizado no livro "Agile Web Development with Rails 7".
+- **Model rico, controller magro** - A lógica de negócio (`add_product`, `remove_product`, `mark_as_abandoned`) vive no model, não no controller. O controller apenas orquestra.
+- **FactoryBot** - Utilizado para manter os testes mais legíveis e flexíveis na criação de objetos.
+
+## Executando com Docker
+
+```bash
+docker compose up
+```
+
+Os serviços disponíveis:
+- **web** - Aplicação Rails na porta 3000
+- **sidekiq** - Processamento de jobs em background
+- **db** - PostgreSQL 16
+- **redis** - Redis 7.0.15
+- **test** - Executa a suite de testes automaticamente
+
 ## Informações técnicas
 
 ### Dependências

@@ -16,7 +16,9 @@ class CartsController < ApplicationController
 
   # POST /cart
   def create
-    create_cart
+    @cart = Cart.find_by(id: session[:cart_id])
+    create_cart unless @cart
+
     product = Product.find(params[:product_id])
 
     return invalid_quantity unless valid_quantity?
