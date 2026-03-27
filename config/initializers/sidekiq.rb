@@ -1,4 +1,8 @@
+redis_config = { url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/0'), read_timeout: 10 }
+
 Sidekiq.configure_server do |config|
+  config.redis = redis_config
+
   config.on(:startup) do
     schedule_file = Rails.root.join('config', 'sidekiq.yml')
 
