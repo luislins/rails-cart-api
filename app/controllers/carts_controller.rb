@@ -1,5 +1,6 @@
 class CartsController < ApplicationController
   before_action :set_cart, only: [:show, :add_item, :remove_item]
+  rescue_from ActiveRecord::RecordNotFound, with: :product_not_found
 
   # GET /cart
   def show
@@ -74,6 +75,10 @@ class CartsController < ApplicationController
 
     @cart.update_total_price
     @cart.touch_interaction
+  end
+
+  def product_not_found
+    render json: { error: "Produto não encontrado" }, status: :not_found
   end
 
   def cart_response(cart)

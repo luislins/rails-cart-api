@@ -32,6 +32,22 @@ RSpec.describe "/cart", type: :request do
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
+
+      it "returns error for negative quantity" do
+        post '/cart', params: { product_id: product.id, quantity: -1 }, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    context "with invalid product" do
+      it "returns not found for non-existent product" do
+        post '/cart', params: { product_id: 99999, quantity: 1 }, as: :json
+
+        expect(response).to have_http_status(:not_found)
+        json = JSON.parse(response.body)
+        expect(json['error']).to eq("Produto não encontrado")
+      end
     end
   end
 
