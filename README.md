@@ -111,7 +111,16 @@ Specs cover the models (totals, quantity merging, the abandonment thresholds),
 the requests (each endpoint and each error path), the routing, and the
 scheduled job.
 
-## Notes
+## The Sidekiq dashboard
 
-The Sidekiq dashboard is mounted at `/sidekiq` without authentication. That is
-fine on a local machine and must not be deployed as is.
+Mounted at `/sidekiq`. It is open in development and behind HTTP Basic
+everywhere else:
+
+```bash
+SIDEKIQ_WEB_USER=...
+SIDEKIQ_WEB_PASSWORD=...
+```
+
+If either variable is missing outside development, the dashboard refuses every
+request rather than falling open — a variable forgotten during a deploy must
+not silently reopen a page that can replay and delete jobs.
